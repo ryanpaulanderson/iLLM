@@ -15,43 +15,48 @@ struct ModelSelectionView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if vm.isLoading {
-                    ProgressView(String(localized: "models.loading"))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                } else {
-                    List(vm.models) { model in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(model.name)
-                                Text(model.id)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if model.id == chatVM.selectedModel?.id {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.accent)
-                            }
+            content
+        }
+    }
+
+    // Extracted to reduce type-checking complexity.
+    @ViewBuilder
+    private var content: some View {
+        Group {
+            if vm.isLoading {
+                ProgressView(String(localized: "models.loading"))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            } else {
+                List(vm.models) { model in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(model.name)
+                            Text(model.id)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            chatVM.selectedModel = model
+                        Spacer()
+                        if model.id == chatVM.selectedModel?.id {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.accent)
                         }
                     }
-                    .listStyle(.plain)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        chatVM.selectedModel = model
+                    }
                 }
+                .listStyle(.plain)
             }
-            .navigationTitle(String(localized: "model.select.title"))
-            .task {
-                await vm.load()
-            }
-            .alert(item: $vm.error) { err in
-                Alert(title: Text("Error"),
-                      message: Text(err.localizedDescription),
-                      dismissButton: .default(Text("OK")))
-    // keep existing view code
-            }
+        }
+        .navigationTitle(String(localized: "model.select.title"))
+        .task {
+            await vm.load()
+        }
+        .alert(item: $vm.error) { _ in
+            Button(String(localized: "alert.ok"), role: .cancel) { }
+        } message: { err in
+            Text(err.localizedDescription)
         }
     }
     
