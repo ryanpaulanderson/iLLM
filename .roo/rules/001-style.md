@@ -307,22 +307,6 @@ func test_loadProfile_returnsDecodedUser() async throws { /* ... */ }
 - Block merges on failing checks.
 - Keep build numbers auto-incremented by CI.
 
----
-
-## 19. Git Hygiene and Reviews
-
-- One logical change per PR. Keep PRs small.
-- Use Conventional Commits or clear imperative messages.
-- Rebase on main before merge.
-- Review checklist covers design, correctness, tests, and docs.
-
-Commit message example:
-
-```text
-feat(auth): add refresh token flow
-```
-
----
 
 ## 20. Definition of Done
 
@@ -404,20 +388,6 @@ struct HTTPRequest {
     var body: Data? = nil
 }
 ```
-
-### PR Review Checklist
-
-- Clear purpose and scope
-- Small, focused changes
-- Tests added or updated
-- Public APIs documented
-- Strings localized
-- Logging and errors sensible, no secrets
-- Privacy manifest considered
-- Performance risks addressed
-- Screens have previews and basic accessibility
-
----
 
 ## Final Notes
 

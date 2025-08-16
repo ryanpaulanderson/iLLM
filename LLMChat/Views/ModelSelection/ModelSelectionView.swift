@@ -5,7 +5,7 @@ struct ModelSelectionView: View {
     @EnvironmentObject var chatVM: ChatViewModel
     @StateObject private var vm: ModelSelectionViewModel
 
-    init(vm: ModelSelectionViewModel = ModelSelectionViewModel()) {
+    @MainActor init(vm: ModelSelectionViewModel = ModelSelectionViewModel()) {
         _vm = StateObject(wrappedValue: vm)
     }
 

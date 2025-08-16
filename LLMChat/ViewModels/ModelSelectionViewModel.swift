@@ -29,10 +29,11 @@ final class ModelSelectionViewModel: ObservableObject {
             let service = factory.makeService(configuration: config)
             models = try await service.availableModels()
         } catch let appErr as AppError {
-            error = appErr
+            self.error = appErr
         } catch {
-            error = .unknown(error)
+            self.error = AppError.unknown(error)
         }
+}
     // LLMChat/ViewModels/ModelSelectionViewModel.swift (preview helpers)
     #if DEBUG
     extension ModelSelectionViewModel {
@@ -52,4 +53,3 @@ final class ModelSelectionViewModel: ObservableObject {
         }
     }
     #endif
-}

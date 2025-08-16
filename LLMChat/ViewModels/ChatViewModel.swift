@@ -47,9 +47,9 @@ final class ChatViewModel: ObservableObject {
             let reply = try await svc.sendMessage(text, history: messages, model: model)
             messages.append(Message(content: reply, role: .assistant))
         } catch let appErr as AppError {
-            error = appErr
+            self.error = appErr
         } catch {
-            error = .unknown(error)
+            self.error = AppError.unknown(error)
         }
     }
 
@@ -61,9 +61,9 @@ final class ChatViewModel: ObservableObject {
             configuration.apiKey = key
             service = serviceFactory.makeService(configuration: configuration)
         } catch let appErr as AppError {
-            error = appErr
+            self.error = appErr
         } catch {
-            error = .unknown(error)
+            self.error = AppError.unknown(error)
         }
     }
     

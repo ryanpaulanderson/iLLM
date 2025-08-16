@@ -1,7 +1,7 @@
   // LLMChat/Services/Network/NetworkManager.swift
  import Foundation
  #if DEBUG
- import os.log
+ import os
  #endif
  
  /// HTTP verbs used by NetworkRequest.
@@ -50,7 +50,7 @@ final class NetworkManager: NetworkManaging {
         }
 
         #if DEBUG
-        logger.log("➡️ %{public}@ %{public}@", request.method.rawValue, request.url.absoluteString)
+        logger.log("➡️ \(request.method.rawValue, privacy: .public) \(request.url.absoluteString, privacy: .public)")
         #endif
 
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
@@ -59,7 +59,7 @@ final class NetworkManager: NetworkManaging {
         }
 
         #if DEBUG
-        logger.log("⬅️ status=%{public}d for %{public}@", http.statusCode, request.url.absoluteString)
+        logger.log("⬅️ status=\(http.statusCode, privacy: .public) for \(request.url.absoluteString, privacy: .public)")
         #endif
 
         guard (200...299).contains(http.statusCode) else {
