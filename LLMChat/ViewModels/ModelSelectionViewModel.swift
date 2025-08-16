@@ -3,8 +3,8 @@ import Foundation
 
 @MainActor
 final class ModelSelectionViewModel: ObservableObject {
-    @Published var models: [LLMModel] = []
-    @Published var isLoading = false
+    @Published private(set) var models: [LLMModel] = []
+    @Published private(set) var isLoading = false
     @Published var error: AppError?
 
     private let factory: LLMServiceFactoryType
@@ -19,6 +19,7 @@ final class ModelSelectionViewModel: ObservableObject {
         self.provider = provider
     }
 
+    /// Loads available models for the configured provider.
     func load() async {
         isLoading = true
         defer { isLoading = false }
@@ -32,5 +33,23 @@ final class ModelSelectionViewModel: ObservableObject {
         } catch {
             error = .unknown(error)
         }
+    // LLMChat/ViewModels/ModelSelectionViewModel.swift (preview helpers)
+    #if DEBUG
+    extension ModelSelectionViewModel {
+        static func preview(models: [LLMModel] = [],
+                            isLoading: Bool = false,
+                            error: AppError? = nil) -> ModelSelectionViewModel {
+            let vm = ModelSelectionViewModel()
+            vm._setPreviewState(models: models, isLoading: isLoading, error: error)
+            return vm
+        }
+    
+        // Internal-only mutator to support previews.
+        fileprivate func _setPreviewState(models: [LLMModel], isLoading: Bool, error: AppError?) {
+            self.models = models
+            self.isLoading = isLoading
+            self.error = error
+        }
     }
+    #endif
 }

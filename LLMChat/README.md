@@ -3,8 +3,8 @@
 SwiftUI MVVM skeleton for a BYOK LLM chat app. This repo contains app code only; create an Xcode project and include these sources.
 
 ## Requirements
-- Xcode 15+
-- iOS 16+ deployment target
+- Xcode 16+
+- iOS 17+ deployment target
 - Swift Concurrency enabled
 
 ## Get Started in Xcode
@@ -12,7 +12,7 @@ SwiftUI MVVM skeleton for a BYOK LLM chat app. This repo contains app code only;
    - Interface: SwiftUI
    - Language: Swift
    - Organization Identifier: your domain
-   - Minimum iOS: 16.0+
+   - Minimum iOS: 17.0+
 
 2. Add the sources
    - In Xcode, right-click your app target group and choose
@@ -22,8 +22,8 @@ SwiftUI MVVM skeleton for a BYOK LLM chat app. This repo contains app code only;
    - Ensure Target Membership is checked for all files
 
 3. Verify project settings
-   - iOS Deployment Target: 16.0 or higher
-   - Disable Strict Concurrency if you plan to lower iOS targets later
+   - iOS Deployment Target: 17.0 or higher
+   - Swift Concurrency: enabled (recommended)
    - Signing: use your personal team for device testing
 
 4. Run

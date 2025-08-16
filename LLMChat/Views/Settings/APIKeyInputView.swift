@@ -13,17 +13,17 @@ struct APIKeyInputView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            SecureField("Enter API Key", text: $apiKey)
+            SecureField(String(localized: "apiKeyInput.placeholder"), text: $apiKey)
                 .textContentType(.password)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
 
             HStack {
                 if let onCancel {
-                    Button("Cancel") { onCancel() }
+                    Button(String(localized: "common.cancel")) { onCancel() }
                 }
                 Spacer()
-                Button("Save") { onSave(apiKey) }
+                Button(String(localized: "settings.save")) { onSave(apiKey) }
                     .buttonStyle(.borderedProminent)
                     .disabled(apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }

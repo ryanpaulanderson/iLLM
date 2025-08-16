@@ -8,10 +8,12 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("OpenAI") {
-                    SecureField("API Key", text: $apiKey)
+                Section(String(localized: "settings.section.openai")) {
+                    SecureField(String(localized: "settings.apiKey.placeholder"), text: $apiKey)
                         .textContentType(.password)
-                    Button("Save") {
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled(true)
+                    Button(String(localized: "settings.save")) {
                         chatVM.updateAPIKey(apiKey)
                     }
                 }
@@ -19,13 +21,13 @@ struct SettingsView: View {
                     Button(role: .destructive) {
                         chatVM.updateAPIKey("")
                     } label: {
-                        Text("Clear API Key")
+                        Text(String(localized: "settings.clearApiKey"))
                     }
                 }
             }
-            .navigationTitle("Settings")
+            .navigationTitle(String(localized: "settings.title"))
             .onAppear {
-                apiKey = (try? KeychainService().getAPIKey(account: "openai")) ?? ""
+                apiKey = chatVM.currentAPIKey()
             }
         }
     }

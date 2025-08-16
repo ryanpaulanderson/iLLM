@@ -4,8 +4,8 @@ import SwiftUI
 
 @MainActor
 final class ChatViewModel: ObservableObject {
-    @Published var messages: [Message] = []
-    @Published var isSending = false
+    @Published private(set) var messages: [Message] = []
+    @Published private(set) var isSending = false
     @Published var error: AppError?
     @Published var selectedModel: LLMModel?
 
@@ -19,11 +19,12 @@ final class ChatViewModel: ObservableObject {
         self.keychain = keychain
     }
 
+    /// Bootstraps the view model by loading persisted API configuration and seeding a default model.
     func bootstrap() {
-        if let key = try? keychain.getAPIKey(account: "openai"), let base = URL(string: Constants.openAIBaseURL) {
-            configuration = APIConfiguration(baseURL: base, apiKey: key ?? "", provider: "openai")
-            service = serviceFactory.makeService(configuration: configuration)
-        }
+        let key = (try? keychain.getAPIKey(account: "openai"))
+        configuration = APIConfiguration(baseURL: Constants.openAIBaseURL, apiKey: key ?? "", provider: "openai")
+        service = serviceFactory.makeService(configuration: configuration)
+
         Task {
             if selectedModel == nil {
                 let svc = service ?? serviceFactory.makeService(configuration: configuration)
@@ -34,9 +35,12 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
+    /// Sends a user message, awaits the model reply, and appends both to the chat history.
+    /// - Parameter text: The user's message text.
     func send(text: String) async {
         guard let model = selectedModel else { return }
         isSending = true
+        defer { isSending = false }
         messages.append(Message(content: text, role: .user))
         do {
             let svc = service ?? serviceFactory.makeService(configuration: configuration)
@@ -47,9 +51,10 @@ final class ChatViewModel: ObservableObject {
         } catch {
             error = .unknown(error)
         }
-        isSending = false
     }
 
+    /// Updates the API key in secure storage and refreshes the service instance.
+    /// - Parameter key: The new API key to persist.
     func updateAPIKey(_ key: String) {
         do {
             try keychain.setAPIKey(key, account: "openai")
@@ -61,4 +66,35 @@ final class ChatViewModel: ObservableObject {
             error = .unknown(error)
         }
     }
+    
+    /// Returns the current API key from the secure store for the default provider.
+    func currentAPIKey() -> String {
+        (try? keychain.getAPIKey(account: "openai")) ?? ""
+    }
 }
+
+#if DEBUG
+// MARK: - Preview Helpers (DEBUG only)
+extension ChatViewModel {
+    /// Creates a ChatViewModel pre-populated for SwiftUI previews.
+    /// - Parameters:
+    ///   - messages: Seed transcript messages.
+    ///   - isSending: Simulate "thinking" state.
+    ///   - selectedModel: Optional model to use.
+    /// - Returns: A configured ChatViewModel instance for previews.
+    static func preview(messages: [Message] = [],
+                        isSending: Bool = false,
+                        selectedModel: LLMModel? = nil) -> ChatViewModel {
+        let vm = ChatViewModel(serviceFactory: LLMServiceFactory(), keychain: KeychainService())
+        vm._setPreviewState(messages: messages, isSending: isSending, selectedModel: selectedModel)
+        return vm
+    }
+
+    /// Internal-only: mutates private(set) state for previews in the same file.
+    fileprivate func _setPreviewState(messages: [Message], isSending: Bool, selectedModel: LLMModel?) {
+        self.messages = messages
+        self.isSending = isSending
+        self.selectedModel = selectedModel
+    }
+}
+#endif

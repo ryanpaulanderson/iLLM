@@ -1,6 +1,7 @@
 // LLMChat/Models/LLMModel.swift
 import Foundation
 
+ /// Describes a model exposed by an LLM provider.
 struct LLMModel: Identifiable, Codable, Hashable {
     let id: String
     let name: String

@@ -5,7 +5,7 @@ protocol LLMServiceFactoryType {
     func makeService(configuration: APIConfiguration) -> LLMServiceProtocol
 }
 
-enum Provider: String {
+private enum Provider: String {
     case openai
 }
 

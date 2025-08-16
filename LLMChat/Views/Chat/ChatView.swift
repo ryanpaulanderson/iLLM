@@ -16,7 +16,7 @@ struct ChatView: View {
                 if vm.isSending {
                     HStack {
                         ProgressView()
-                        Text("Thinking...")
+                        Text(String(localized: "chat.thinking"))
                             .foregroundStyle(.secondary)
                     }
                     .padding()
@@ -37,9 +37,37 @@ struct ChatView: View {
             .padding(.bottom)
         }
         .alert(item: $vm.error) { err in
-            Alert(title: Text("Error"),
+            Alert(title: Text(String(localized: "alert.error.title")),
                   message: Text(err.localizedDescription),
-                  dismissButton: .default(Text("OK")))
+                  dismissButton: .default(Text(String(localized: "alert.ok"))))
         }
     }
 }
+
+#if DEBUG
+struct ChatView_Previews: PreviewProvider {
+    static var previews: some View {
+        Group {
+            ChatView()
+                .environmentObject(
+                    ChatViewModel.preview(
+                        messages: [
+                            Message(content: "Hello", role: .user),
+                            Message(content: "Hi! 👋", role: .assistant)
+                        ]
+                    )
+                )
+                .previewDisplayName("With Messages")
+
+            ChatView()
+                .environmentObject(
+                    ChatViewModel.preview(
+                        messages: [Message(content: "Typing…", role: .user)],
+                        isSending: true
+                    )
+                )
+                .previewDisplayName("Sending")
+        }
+    }
+}
+#endif

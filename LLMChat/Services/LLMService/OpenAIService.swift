@@ -42,7 +42,7 @@ final class OpenAIService: LLMServiceProtocol {
             + [ChatMessage(role: "user", content: message)]
         let body = ChatRequest(model: model.id, messages: msgs)
 
-        let request = NetworkRequest(
+        let request = try NetworkRequest(
             url: url,
             method: .post,
             headers: [

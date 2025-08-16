@@ -9,13 +9,14 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             ChatView()
-                .navigationTitle("LLM Chat")
+                .navigationTitle(String(localized: "chat.title"))
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Button {
                             showModelSelection = true
                         } label: {
                             Image(systemName: "slider.horizontal.3")
+                                .accessibilityLabel(String(localized: "accessibility.selectModel"))
                         }
                     }
                     ToolbarItem(placement: .topBarTrailing) {
@@ -23,6 +24,7 @@ struct ContentView: View {
                             showSettings = true
                         } label: {
                             Image(systemName: "gear")
+                                .accessibilityLabel(String(localized: "accessibility.openSettings"))
                         }
                     }
                 }
@@ -37,6 +39,36 @@ struct ContentView: View {
         }
         .onAppear {
             chatVM.bootstrap()
+        }
+    }
+}
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        Group {
+            NavigationStack {
+                ContentView()
+                    .environmentObject(
+                        ChatViewModel.preview(
+                            messages: [
+                                Message(content: "Hi there", role: .user),
+                                Message(content: "Hello! How can I help?", role: .assistant)
+                            ]
+                        )
+                    )
+            }
+            .previewDisplayName("Default")
+
+            NavigationStack {
+                ContentView()
+                    .environmentObject(
+                        ChatViewModel.preview(
+                            messages: [Message(content: "Thinking…", role: .user)],
+                            isSending: true
+                        )
+                    )
+            }
+            .previewDisplayName("Sending")
         }
     }
 }
