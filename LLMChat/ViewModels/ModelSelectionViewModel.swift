@@ -11,7 +11,7 @@ final class ModelSelectionViewModel: ObservableObject {
     private let keychain: KeychainServiceType
     private let provider: String
 
-    nonisolated(unsafe) init(factory: LLMServiceFactoryType = LLMServiceFactory(),
+    init(factory: LLMServiceFactoryType = LLMServiceFactory(),
          keychain: KeychainServiceType = KeychainService(),
          provider: String = "openai") {
         self.factory = factory

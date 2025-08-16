@@ -2,7 +2,7 @@
 import Foundation
 import Security
 
-enum AppError: LocalizedError, Identifiable {
+enum AppError: LocalizedError, Identifiable, Equatable {
     var id: String { localizedDescription }
 
     case network(description: String)
@@ -10,6 +10,23 @@ enum AppError: LocalizedError, Identifiable {
     case decoding(Error)
     case keychain(status: OSStatus)
     case unknown(Error)
+    
+    static func == (lhs: AppError, rhs: AppError) -> Bool {
+        switch (lhs, rhs) {
+        case (.network(let a), .network(let b)):
+            return a == b
+        case (.httpStatus(let codeA, let bodyA), .httpStatus(let codeB, let bodyB)):
+            return codeA == codeB && bodyA == bodyB
+        case (.decoding(let a), .decoding(let b)):
+            return a.localizedDescription == b.localizedDescription
+        case (.keychain(let a), .keychain(let b)):
+            return a == b
+        case (.unknown(let a), .unknown(let b)):
+            return a.localizedDescription == b.localizedDescription
+        default:
+            return false
+        }
+    }
 
     var errorDescription: String? {
         switch self {

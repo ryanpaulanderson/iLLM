@@ -4,6 +4,7 @@ import SwiftUI
 struct ModelSelectionView: View {
     @EnvironmentObject var chatVM: ChatViewModel
     @StateObject private var vm: ModelSelectionViewModel
+    @State private var showError = false
 
     @MainActor init(vm: ModelSelectionViewModel? = nil) {
         if let vm = vm {
@@ -15,48 +16,67 @@ struct ModelSelectionView: View {
 
     var body: some View {
         NavigationStack {
-            content
+            mainContent
+                .navigationTitle(String(localized: "model.select.title"))
+                .task {
+                    await vm.load()
+                }
+                .onChange(of: vm.error) { _, newValue in
+                    showError = newValue != nil
+                }
+                .alert("Error", isPresented: $showError) {
+                    Button(String(localized: "alert.ok"), role: .cancel) {
+                        vm.error = nil
+                    }
+                } message: {
+                    if let error = vm.error {
+                        Text(error.localizedDescription)
+                    }
+                }
         }
     }
 
-    // Extracted to reduce type-checking complexity.
     @ViewBuilder
-    private var content: some View {
-        Group {
-            if vm.isLoading {
-                ProgressView(String(localized: "models.loading"))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-            } else {
-                List(vm.models) { model in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(model.name)
-                            Text(model.id)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if model.id == chatVM.selectedModel?.id {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.accent)
-                        }
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        chatVM.selectedModel = model
-                    }
-                }
-                .listStyle(.plain)
+    private var mainContent: some View {
+        if vm.isLoading {
+            loadingView
+        } else {
+            modelList
+        }
+    }
+
+    private var loadingView: some View {
+        ProgressView(String(localized: "models.loading"))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var modelList: some View {
+        List(vm.models) { model in
+            modelRow(for: model)
+        }
+        .listStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func modelRow(for model: LLMModel) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(model.name)
+                Text(model.id)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            
+            Spacer()
+            
+            if model.id == chatVM.selectedModel?.id {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(Color.accentColor)
             }
         }
-        .navigationTitle(String(localized: "model.select.title"))
-        .task {
-            await vm.load()
-        }
-        .alert(item: $vm.error) { _ in
-            Button(String(localized: "alert.ok"), role: .cancel) { }
-        } message: { err in
-            Text(err.localizedDescription)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            chatVM.selectedModel = model
         }
     }
     
