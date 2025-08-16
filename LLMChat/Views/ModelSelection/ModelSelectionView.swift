@@ -5,8 +5,12 @@ struct ModelSelectionView: View {
     @EnvironmentObject var chatVM: ChatViewModel
     @StateObject private var vm: ModelSelectionViewModel
 
-    @MainActor init(vm: ModelSelectionViewModel = ModelSelectionViewModel()) {
-        _vm = StateObject(wrappedValue: vm)
+    @MainActor init(vm: ModelSelectionViewModel? = nil) {
+        if let vm = vm {
+            _vm = StateObject(wrappedValue: vm)
+        } else {
+            _vm = StateObject(wrappedValue: ModelSelectionViewModel())
+        }
     }
 
     var body: some View {

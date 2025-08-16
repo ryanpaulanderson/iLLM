@@ -11,7 +11,7 @@ final class ModelSelectionViewModel: ObservableObject {
     private let keychain: KeychainServiceType
     private let provider: String
 
-    init(factory: LLMServiceFactoryType = LLMServiceFactory(),
+    nonisolated(unsafe) init(factory: LLMServiceFactoryType = LLMServiceFactory(),
          keychain: KeychainServiceType = KeychainService(),
          provider: String = "openai") {
         self.factory = factory
@@ -34,9 +34,10 @@ final class ModelSelectionViewModel: ObservableObject {
             self.error = AppError.unknown(error)
         }
 }
-    // LLMChat/ViewModels/ModelSelectionViewModel.swift (preview helpers)
-    #if DEBUG
-    extension ModelSelectionViewModel {
+}
+// LLMChat/ViewModels/ModelSelectionViewModel.swift (preview helpers)
+#if DEBUG
+extension ModelSelectionViewModel {
         static func preview(models: [LLMModel] = [],
                             isLoading: Bool = false,
                             error: AppError? = nil) -> ModelSelectionViewModel {
