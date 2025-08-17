@@ -2,6 +2,7 @@
 import SwiftUI
 
 struct ModelSelectionView: View {
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var chatVM: ChatViewModel
     @StateObject private var vm: ModelSelectionViewModel
     @State private var showError = false
@@ -77,6 +78,7 @@ struct ModelSelectionView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             chatVM.selectedModel = model
+            dismiss() // Auto-dismiss after selecting a model
         }
     }
     

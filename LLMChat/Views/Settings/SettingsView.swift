@@ -2,6 +2,7 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var chatVM: ChatViewModel
     @State private var apiKey: String = ""
 
@@ -15,6 +16,7 @@ struct SettingsView: View {
                         .autocorrectionDisabled(true)
                     Button(String(localized: "settings.save")) {
                         chatVM.updateAPIKey(apiKey)
+                        dismiss() // Auto-dismiss after saving
                     }
                 }
                 Section {
@@ -26,6 +28,20 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle(String(localized: "settings.title"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(.gray)
+                    }
+                    .accessibilityLabel("Close")
+                    .accessibilityHint("Dismiss the settings screen")
+                }
+            }
             .onAppear {
                 apiKey = chatVM.currentAPIKey()
             }

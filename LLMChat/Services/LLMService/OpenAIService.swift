@@ -4,10 +4,12 @@ import Foundation
 final class OpenAIService: LLMServiceProtocol {
     private let configuration: APIConfiguration
     private let network: NetworkManaging
+    private let modelCache: ModelCaching
 
-    init(configuration: APIConfiguration, network: NetworkManaging) {
+    init(configuration: APIConfiguration, network: NetworkManaging, modelCache: ModelCaching = ModelCache()) {
         self.configuration = configuration
         self.network = network
+        self.modelCache = modelCache
     }
 
     // MARK: - DTOs
@@ -57,12 +59,35 @@ final class OpenAIService: LLMServiceProtocol {
     }
 
     func availableModels() async throws -> [LLMModel] {
-        // MVP: hardcoded shortlist; replace with live fetch if needed
-        return [
-            LLMModel(id: "gpt-4o-mini", name: "GPT-4o mini", provider: "openai"),
-            LLMModel(id: "gpt-4o", name: "GPT-4o", provider: "openai"),
-            LLMModel(id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", provider: "openai")
-        ]
+        // 1) Return cached models if present and fresh
+        let provider = configuration.provider
+        let apiKey = configuration.apiKey
+        if let cached = modelCache.load(provider: provider, apiKey: apiKey, ttl: 4 * 60 * 60) {
+            return cached
+        }
+
+        // 2) Fetch live from OpenAI /v1/models
+        struct ModelsListResponse: Decodable { let data: [ModelItem] }
+        struct ModelItem: Decodable { let id: String }
+
+        let url = configuration.baseURL.appendingPathComponent("models")
+        let request = try NetworkRequest(
+            url: url,
+            method: .get,
+            headers: [
+                "Authorization": "Bearer \(apiKey)"
+            ],
+            body: Optional<String>.none
+        )
+        let response: ModelsListResponse = try await network.request(request)
+
+        // 3) Map to LLMModel and cache
+        let models = response.data
+            .map { LLMModel(id: $0.id, name: $0.id, provider: provider) }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+
+        modelCache.save(models, provider: provider, apiKey: apiKey)
+        return models
     }
 
     func validate(apiKey: String) async throws -> Bool {

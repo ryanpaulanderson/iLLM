@@ -6,40 +6,68 @@ struct ChatView: View {
     @State private var input: String = ""
 
     var body: some View {
-        VStack(spacing: 0) {
-            List {
-                ForEach(vm.messages) { message in
-                    MessageBubbleView(message: message)
+        ScrollViewReader { proxy in
+            VStack(spacing: 0) {
+                List {
+                    ForEach(vm.messages) { message in
+                        MessageBubbleView(message: message)
+                            .listRowInsets(EdgeInsets())
+                            .listRowSeparator(.hidden)
+                    }
+                    if vm.isSending {
+                        HStack {
+                            ProgressView()
+                            Text(String(localized: "chat.thinking"))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding()
+                        .listRowSeparator(.hidden)
+                    }
+                    // Bottom anchor to ensure we can always scroll to latest content (including typing row)
+                    Color.clear
+                        .frame(height: 1)
                         .listRowInsets(EdgeInsets())
                         .listRowSeparator(.hidden)
+                        .id("BOTTOM")
                 }
-                if vm.isSending {
-                    HStack {
-                        ProgressView()
-                        Text(String(localized: "chat.thinking"))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding()
-                    .listRowSeparator(.hidden)
+                .listStyle(.plain)
+                .onChange(of: vm.messages.count) { _ in
+                    scrollToBottom(proxy)
                 }
+                .onChange(of: vm.isSending) { _ in
+                    scrollToBottom(proxy)
+                }
+                .onAppear {
+                    scrollToBottom(proxy)
+                }
+
+                Divider()
+
+                MessageInputView(text: $input, onSend: {
+                    let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !text.isEmpty else { return }
+                    Task { await vm.send(text: text) }
+                    input = ""
+                })
+                .padding(.horizontal)
+                .padding(.bottom)
             }
-            .listStyle(.plain)
-
-            Divider()
-
-            MessageInputView(text: $input, onSend: {
-                let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !text.isEmpty else { return }
-                Task { await vm.send(text: text) }
-                input = ""
-            })
-            .padding(.horizontal)
-            .padding(.bottom)
         }
         .alert(item: $vm.error) { err in
             Alert(title: Text(String(localized: "alert.error.title")),
                   message: Text(err.localizedDescription),
                   dismissButton: .default(Text(String(localized: "alert.ok"))))
+        }
+    }
+
+    // MARK: - Scrolling
+
+    private func scrollToBottom(_ proxy: ScrollViewProxy) {
+        // Defer to next runloop so List lays out before scrolling
+        DispatchQueue.main.async {
+            withAnimation(.easeOut(duration: 0.2)) {
+                proxy.scrollTo("BOTTOM", anchor: .bottom)
+            }
         }
     }
 }
