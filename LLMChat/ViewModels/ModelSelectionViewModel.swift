@@ -10,6 +10,7 @@ final class ModelSelectionViewModel: ObservableObject {
     private let factory: LLMServiceFactoryType
     private let keychain: KeychainServiceType
     private let provider: String
+    private var configuration: APIConfiguration?
 
     init(factory: LLMServiceFactoryType = LLMServiceFactory(),
          keychain: KeychainServiceType = KeychainService(),
@@ -18,14 +19,25 @@ final class ModelSelectionViewModel: ObservableObject {
         self.keychain = keychain
         self.provider = provider
     }
+    
+    /// Sets the API configuration to use for loading models.
+    /// - Parameter configuration: The API configuration to use.
+    func setConfiguration(_ configuration: APIConfiguration) {
+        self.configuration = configuration
+    }
 
     /// Loads available models for the configured provider.
     func load() async {
         isLoading = true
         defer { isLoading = false }
         do {
-            let apiKey = (try? keychain.getAPIKey(account: provider)) ?? ""
-            let config = APIConfiguration(apiKey: apiKey, provider: provider)
+            let config: APIConfiguration
+            if let configuration = configuration {
+                config = configuration
+            } else {
+                let apiKey = (try? keychain.getAPIKey(account: provider)) ?? ""
+                config = APIConfiguration(apiKey: apiKey, provider: provider)
+            }
             let service = factory.makeService(configuration: config)
             models = try await service.availableModels()
         } catch let appErr as AppError {
@@ -33,7 +45,7 @@ final class ModelSelectionViewModel: ObservableObject {
         } catch {
             self.error = AppError.unknown(error)
         }
-}
+    }
 }
 // LLMChat/ViewModels/ModelSelectionViewModel.swift (preview helpers)
 #if DEBUG

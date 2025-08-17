@@ -122,6 +122,78 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Assistant: %@" } }
       }
+    },
+    "conversations.new": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "New Conversation" } }
+      }
+    },
+    "conversations.section.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Conversations" } }
+      }
+    },
+    "conversations.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Conversations" } }
+      }
+    },
+    "accessibility.close": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Close" } }
+      }
+    },
+    "models.select": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Select Model" } }
+      }
+    },
+    "settings.inspector.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Settings" } }
+      }
+    },
+    "models.current": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Current Model" } }
+      }
+    },
+    "models.none": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "None Selected" } }
+      }
+    },
+    "settings.clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Clear" } }
+      }
+    },
+    "settings.section.apikey": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "API Configuration" } }
+      }
+    },
+    "models.section.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Model Selection" } }
+      }
+    },
+    "models.load": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Load Models" } }
+      }
     }
   }
 }

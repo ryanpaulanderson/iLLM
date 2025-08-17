@@ -71,6 +71,17 @@ final class ChatViewModel: ObservableObject {
     func currentAPIKey() -> String {
         (try? keychain.getAPIKey(account: "openai")) ?? ""
     }
+    
+    /// Returns the current API configuration.
+    func currentConfiguration() -> APIConfiguration {
+        configuration
+    }
+    
+    /// Clears the current conversation messages to start fresh.
+    func clearConversation() {
+        messages = []
+        error = nil  // Also clear any existing error
+    }
 }
 
 #if DEBUG
