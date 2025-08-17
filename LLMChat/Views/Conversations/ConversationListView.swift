@@ -10,21 +10,26 @@ import SwiftUI
 
 struct ConversationListView: View {
     @EnvironmentObject var chatVM: ChatViewModel
-    @State private var conversations = Conversation.mockConversations
-    @State private var selectedConversation: Conversation?
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    let onSelect: ((Conversation) -> Void)?
     @State private var isCreatingNew = false
     
+    init(onSelect: ((Conversation) -> Void)? = nil) {
+        self.onSelect = onSelect
+    }
+    
     var body: some View {
-        List(selection: $selectedConversation) {
+        List {
             Section {
                 Button {
                     // Haptic feedback
                     let impactFeedback = UIImpactFeedbackGenerator(style: .light)
                     impactFeedback.impactOccurred()
                     
-                    // Clear messages to start a new conversation
-                    chatVM.clearConversation()
-                    selectedConversation = nil
+                    // Create a new conversation
+                    let newConv = chatVM.startNewConversation()
+                    onSelect?(newConv)
                     
                     // Visual feedback
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -36,6 +41,11 @@ struct ConversationListView: View {
                         withAnimation {
                             isCreatingNew = false
                         }
+                    }
+                    
+                    // Dismiss on iPhone to go back to chat
+                    if horizontalSizeClass == .compact {
+                        dismiss()
                     }
                 } label: {
                     Label {
@@ -53,26 +63,25 @@ struct ConversationListView: View {
             }
             
             Section(header: Text("Recent")) {
-                ForEach(conversations) { conversation in
+                ForEach(chatVM.conversations) { conversation in
                     ConversationRow(conversation: conversation)
-                        .tag(conversation)
                         .contentShape(Rectangle())  // Make entire row tappable
                         .onTapGesture {
                             // Haptic feedback for selection
                             let selectionFeedback = UISelectionFeedbackGenerator()
                             selectionFeedback.selectionChanged()
                             
-                            selectedConversation = conversation
+                            onSelect?(conversation)
+                            
+                            // Dismiss on iPhone to go back to chat
+                            if horizontalSizeClass == .compact {
+                                dismiss()
+                            }
                         }
                 }
             }
         }
         .listStyle(.sidebar)
-        .navigationTitle("Conversations")
-        .onAppear {
-            // Select the first active conversation by default
-            selectedConversation = conversations.first { $0.isActive }
-        }
     }
 }
 
@@ -111,6 +120,7 @@ struct ConversationListView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationStack {
             ConversationListView()
+                .environmentObject(ChatViewModel.preview())
         }
     }
 }

@@ -9,6 +9,22 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                // Model Selection Section
+                Section("Model") {
+                    NavigationLink {
+                        ModelSelectionView()
+                    } label: {
+                        HStack {
+                            Text("Selected Model")
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            Text(chatVM.selectedModel?.name ?? "None")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                
+                // API Configuration Section
                 Section(String(localized: "settings.section.openai")) {
                     SecureField(String(localized: "settings.apiKey.placeholder"), text: $apiKey)
                         .textContentType(.password)
@@ -19,6 +35,8 @@ struct SettingsView: View {
                         dismiss() // Auto-dismiss after saving
                     }
                 }
+                
+                // Actions Section
                 Section {
                     Button(role: .destructive) {
                         chatVM.updateAPIKey("")

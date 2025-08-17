@@ -31,10 +31,10 @@ struct ChatView: View {
                         .id("BOTTOM")
                 }
                 .listStyle(.plain)
-                .onChange(of: vm.messages.count) { _ in
+                .onChange(of: vm.messages.count, initial: false) { _, _ in
                     scrollToBottom(proxy)
                 }
-                .onChange(of: vm.isSending) { _ in
+                .onChange(of: vm.isSending, initial: false) { _, _ in
                     scrollToBottom(proxy)
                 }
                 .onAppear {

@@ -1,17 +1,18 @@
-// LLMChat/App/LLMChatApp.swift
+//
+//  LLMChatApp.swift
+//  LLMChat
+//
+//  Created by AI Agent.
+//  Description: Main app entry point for LLMChat iOS application
+//
+
 import SwiftUI
 
 @main
 struct LLMChatApp: App {
-    @StateObject private var chatVM = ChatViewModel(
-        serviceFactory: LLMServiceFactory(),
-        keychain: KeychainService()
-    )
-
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(chatVM)
         }
     }
 }
