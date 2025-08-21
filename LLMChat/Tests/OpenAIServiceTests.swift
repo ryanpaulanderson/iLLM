@@ -38,6 +38,13 @@ final class OpenAIServiceTests: XCTestCase {
             }
             throw AppError.decoding(DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Invalid result type")))
         }
+        
+        func streamLines(_ request: NetworkRequest) -> AsyncThrowingStream<String, Error> {
+            AsyncThrowingStream { continuation in
+                // No-op: these tests don't depend on streaming
+                continuation.finish()
+            }
+        }
     }
     
     private final class FakeModelCache: ModelCaching {

@@ -217,6 +217,13 @@ final class MockNetworkManager: NetworkManaging {
         return result
     }
     
+    func streamLines(_ request: NetworkRequest) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            // By default, finish immediately; tests can subclass/override if needed
+            continuation.finish()
+        }
+    }
+    
     func reset() {
         requestResult = nil
         requestError = nil

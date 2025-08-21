@@ -1,7 +1,7 @@
 // LLMChat/Services/LLMService/OpenAIService.swift
 import Foundation
 
-final class OpenAIService: LLMServiceProtocol {
+final class OpenAIService: LLMStreamingServiceProtocol {
     private let configuration: APIConfiguration
     private let network: NetworkManaging
     private let modelCache: ModelCaching
@@ -19,12 +19,22 @@ final class OpenAIService: LLMServiceProtocol {
         let messages: [ChatMessage]
         let temperature: Double?
         let top_p: Double?
+        let stream: Bool?
         
         init(model: String, messages: [ChatMessage], parameters: ModelParameters = .empty) {
             self.model = model
             self.messages = messages
             self.temperature = parameters.temperature
             self.top_p = parameters.topP
+            self.stream = nil
+        }
+
+        init(streamingModel model: String, messages: [ChatMessage], parameters: ModelParameters = .empty) {
+            self.model = model
+            self.messages = messages
+            self.temperature = parameters.temperature
+            self.top_p = parameters.topP
+            self.stream = true
         }
     }
 
@@ -102,5 +112,88 @@ final class OpenAIService: LLMServiceProtocol {
     func validate(apiKey: String) async throws -> Bool {
         // Treat whitespace-only keys as invalid
         return !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    // MARK: - Streaming
+
+    /// Streams assistant deltas using OpenAI SSE format (data: {"choices":[{"delta":{"content":"..."}}]} )
+    func streamMessage(_ message: String, history: [Message], model: LLMModel, parameters: ModelParameters) throws -> AsyncThrowingStream<String, Error> {
+        let url = configuration.baseURL.appendingPathComponent("chat/completions")
+        let msgs: [ChatMessage] =
+            history.map { ChatMessage(role: $0.role.rawValue, content: $0.content) }
+            + [ChatMessage(role: "user", content: message)]
+        let body = ChatRequest(streamingModel: model.id, messages: msgs, parameters: parameters)
+
+        let request = try NetworkRequest(
+            url: url,
+            method: .post,
+            headers: [
+                "Authorization": "Bearer \(configuration.apiKey)",
+                "Content-Type": "application/json"
+            ],
+            body: body
+        )
+
+        // Parse SSE lines and yield delta.content pieces
+        struct StreamChunk: Decodable {
+            struct Choice: Decodable {
+                struct Delta: Decodable { let content: String? }
+                let delta: Delta
+            }
+            let choices: [Choice]
+        }
+
+        return network.streamLines(request).compactMap { line in
+            // OpenAI sends lines starting with "data: ..." and a terminator "data: [DONE]"
+            if line.hasPrefix("data: ") {
+                let payload = String(line.dropFirst(6))
+                if payload.trimmingCharacters(in: .whitespacesAndNewlines) == "[DONE]" {
+                    return nil
+                }
+                if let data = payload.data(using: .utf8) {
+                    if let chunk = try? JSONDecoder().decode(StreamChunk.self, from: data) {
+                        return chunk.choices.first?.delta.content
+                    }
+                }
+            }
+            return nil
+        }.eraseToAsyncThrowingStream()
+    }
+}
+
+// MARK: - AsyncThrowingStream helpers
+private extension AsyncThrowingStream where Element == String, Failure == Error {
+    func compactMap<T>(_ transform: @escaping (String) throws -> T?) -> AsyncThrowingStream<T, Error> {
+        AsyncThrowingStream<T, Error> { continuation in
+            Task {
+                do {
+                    for try await element in self {
+                        if let mapped = try transform(element) {
+                            continuation.yield(mapped)
+                        }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+}
+
+private extension AsyncThrowingStream {
+    func eraseToAsyncThrowingStream() -> AsyncThrowingStream<Element, Error> {
+        AsyncThrowingStream<Element, Error> { continuation in
+            Task {
+                do {
+                    for try await element in self {
+                        continuation.yield(element)
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
     }
 }

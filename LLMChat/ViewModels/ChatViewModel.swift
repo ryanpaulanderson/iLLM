@@ -34,10 +34,18 @@ final class ChatViewModel: ObservableObject {
         configuration = APIConfiguration(baseURL: Constants.openAIBaseURL, apiKey: key ?? "", provider: "openai")
         service = serviceFactory.makeService(configuration: configuration)
 
-        // Always start with a fresh conversation list on bootstrap
-        conversations = []
-        
-        // Always create a new conversation on app launch
+        // Load persisted conversations so the user can access them
+        loadConversations()
+        // Mark all existing conversations inactive
+        conversations = conversations.map { c in
+            Conversation(id: c.id,
+                         title: c.title,
+                         lastMessage: c.lastMessage,
+                         timestamp: c.timestamp,
+                         isActive: false,
+                         lastUsedModelID: c.lastUsedModelID)
+        }
+        // Always start a brand-new active conversation at the top
         let defaultModelID = UserDefaults.standard.string(forKey: Constants.defaultModelKey)
         let newConversation = Conversation(
             title: "New Chat",
@@ -46,13 +54,11 @@ final class ChatViewModel: ObservableObject {
             isActive: true,
             lastUsedModelID: defaultModelID
         )
-        
-        // Add the new conversation to the top of the list
         conversations.insert(newConversation, at: 0)
         currentConversation = newConversation
-        messages = [] // Start with empty messages
+        messages = []
         saveConversations()
-        
+
         // Load model parameters
         loadModelParameters()
 
@@ -60,7 +66,7 @@ final class ChatViewModel: ObservableObject {
             if selectedModel == nil {
                 let svc = service ?? serviceFactory.makeService(configuration: configuration)
                 if let models = try? await svc.availableModels() {
-                    // Restore the model for the new conversation (which should be the default model)
+                    // Restore the model for the current conversation if we have a lastUsedModelID
                     if let currentConversation = currentConversation, let modelID = currentConversation.lastUsedModelID {
                         await restoreModelForConversation(modelID: modelID)
                     } else {
@@ -103,26 +109,86 @@ final class ChatViewModel: ObservableObject {
 
         do {
             let svc = service ?? serviceFactory.makeService(configuration: configuration)
-            // Send prior history (plus optional system message). The service will append the current user message.
-            let reply = try await svc.sendMessage(text, history: wireHistory, model: model, parameters: modelParameters)
-            messages.append(Message(content: reply, role: .assistant))
+            // Prefer streaming when available
+            if let streaming = svc as? LLMStreamingServiceProtocol {
+                var accumulated = ""
+                var receivedAnyDelta = false
+                // Append a placeholder assistant message we will mutate as chunks arrive
+                messages.append(Message(content: "", role: .assistant))
+                do {
+                    let stream = try streaming.streamMessage(text, history: wireHistory, model: model, parameters: modelParameters)
+                    for try await delta in stream {
+                        receivedAnyDelta = true
+                        accumulated += delta
+                        // Update the last assistant message in place for real-time UI updates
+                        if let lastIndex = messages.indices.last, messages[lastIndex].role == .assistant {
+                            messages[lastIndex] = Message(content: accumulated, role: .assistant)
+                        }
+                    }
+                } catch {
+                    // Swallow streaming errors and fallback to non-streaming path below
+                    receivedAnyDelta = false
+                }
 
-            // Update the active conversation's preview and save the model used
-            if let idx = conversations.firstIndex(where: { $0.id == conversation.id }) {
-                let c = conversations[idx]
-                conversations[idx] = Conversation(
-                    id: c.id,
-                    title: c.title,
-                    lastMessage: reply,
-                    timestamp: Date(),
-                    isActive: c.isActive,
-                    lastUsedModelID: model.id
-                )
-                saveConversations()
+                if receivedAnyDelta {
+                    // Update the active conversation's preview and save the model used
+                    if let idx = conversations.firstIndex(where: { $0.id == conversation.id }) {
+                        let c = conversations[idx]
+                        conversations[idx] = Conversation(
+                            id: c.id,
+                            title: c.title,
+                            lastMessage: accumulated,
+                            timestamp: Date(),
+                            isActive: c.isActive,
+                            lastUsedModelID: model.id
+                        )
+                        saveConversations()
+                    }
+                    // Persist after finishing the assistant message
+                    saveMessages(for: conversation)
+                } else {
+                    // No streaming chunks arrived. Remove placeholder and fallback to non-streaming request.
+                    if let lastIndex = messages.indices.last, messages[lastIndex].role == .assistant {
+                        messages.remove(at: lastIndex)
+                    }
+                    let reply = try await svc.sendMessage(text, history: wireHistory, model: model, parameters: modelParameters)
+                    messages.append(Message(content: reply, role: .assistant))
+
+                    if let idx = conversations.firstIndex(where: { $0.id == conversation.id }) {
+                        let c = conversations[idx]
+                        conversations[idx] = Conversation(
+                            id: c.id,
+                            title: c.title,
+                            lastMessage: reply,
+                            timestamp: Date(),
+                            isActive: c.isActive,
+                            lastUsedModelID: model.id
+                        )
+                        saveConversations()
+                    }
+                    saveMessages(for: conversation)
+                }
+            } else {
+                // Fallback to non-streaming
+                let reply = try await svc.sendMessage(text, history: wireHistory, model: model, parameters: modelParameters)
+                messages.append(Message(content: reply, role: .assistant))
+
+                // Update the active conversation's preview and save the model used
+                if let idx = conversations.firstIndex(where: { $0.id == conversation.id }) {
+                    let c = conversations[idx]
+                    conversations[idx] = Conversation(
+                        id: c.id,
+                        title: c.title,
+                        lastMessage: reply,
+                        timestamp: Date(),
+                        isActive: c.isActive,
+                        lastUsedModelID: model.id
+                    )
+                    saveConversations()
+                }
+                // Persist after appending the assistant message
+                saveMessages(for: conversation)
             }
-
-            // Persist after appending the assistant message
-            saveMessages(for: conversation)
         } catch let appErr as AppError {
             self.error = appErr
         } catch {

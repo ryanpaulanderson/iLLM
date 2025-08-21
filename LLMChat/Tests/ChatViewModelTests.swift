@@ -14,11 +14,12 @@ final class ChatViewModelTests: XCTestCase {
     
     // MARK: - Test Doubles
     
-    private final class FakeService: LLMServiceProtocol {
+    private final class FakeService: LLMServiceProtocol, LLMStreamingServiceProtocol {
         var sendMessageResult: String = "test response"
         var sendMessageError: Error?
         var availableModelsResult: [LLMModel] = []
         var validateResult: Bool = true
+        var streamingDeltas: [String]? // if set, conform to streaming
         
         private(set) var sendMessageCallCount = 0
         private(set) var lastSentMessage: String?
@@ -56,7 +57,25 @@ final class ChatViewModelTests: XCTestCase {
         func validate(apiKey: String) async throws -> Bool {
             return validateResult
         }
+
+        func streamMessage(_ message: String, history: [Message], model: LLMModel, parameters: ModelParameters) throws -> AsyncThrowingStream<String, Error> {
+            guard let deltas = streamingDeltas else {
+                return AsyncThrowingStream { continuation in
+                    continuation.finish()
+                }
+            }
+            return AsyncThrowingStream { continuation in
+                Task {
+                    for delta in deltas {
+                        try? await Task.sleep(nanoseconds: 5_000_000)
+                        continuation.yield(delta)
+                    }
+                    continuation.finish()
+                }
+            }
+        }
     }
+
     
     private final class FakeServiceFactory: LLMServiceFactoryType {
         private let service: LLMServiceProtocol
@@ -149,6 +168,13 @@ final class ChatViewModelTests: XCTestCase {
     
     override func setUp() {
         super.setUp()
+        // Ensure tests start from a clean persistence state
+        let defaults = UserDefaults.standard
+        let allKeys = defaults.dictionaryRepresentation().keys
+        for key in allKeys where key.hasPrefix("llmchat.") || key == Constants.defaultModelKey || key == Constants.modelParametersKey || key == Constants.systemPromptGlobalKey || key == Constants.systemPromptOverridesKey {
+            defaults.removeObject(forKey: key)
+        }
+
         fakeService = FakeService()
         fakeFactory = FakeServiceFactory(service: fakeService)
         fakeKeychain = FakeKeychain()
@@ -247,6 +273,31 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.messages[0].role, .user)
         XCTAssertEqual(viewModel.messages[1].content, "Hello back!")
         XCTAssertEqual(viewModel.messages[1].role, .assistant)
+    }
+
+    func test_sendMessage_streaming_buildsAssistantMessageIncrementally() async {
+        // Given
+        let testModel = LLMModel(id: "test-model", name: "Test", provider: "openai")
+        let conversation = Conversation(title: "Test Chat")
+        viewModel.selectedModel = testModel
+        viewModel.currentConversation = conversation
+        fakeService.streamingDeltas = ["Hel", "lo ", "wor", "ld"]
+
+        // When
+        let task = Task { await viewModel.send(text: "Hello") }
+        // Allow some time for streaming to produce
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        
+        // We expect at least one assistant message placeholder
+        XCTAssertTrue(viewModel.messages.count >= 2)
+        XCTAssertEqual(viewModel.messages[0].role, .user)
+        XCTAssertEqual(viewModel.messages[1].role, .assistant)
+        // Interim content should be a prefix of the final
+        let interim = viewModel.messages[1].content
+        XCTAssertFalse(interim.isEmpty)
+        
+        await task.value
+        XCTAssertEqual(viewModel.messages[1].content, "Hello world")
     }
     
     func test_sendMessage_withoutSelectedModel_doesNotSend() async {

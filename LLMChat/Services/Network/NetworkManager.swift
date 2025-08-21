@@ -34,6 +34,9 @@ struct NetworkRequest {
 /// Minimal HTTP client.
 protocol NetworkManaging {
     func request<T: Decodable>(_ request: NetworkRequest) async throws -> T
+    /// Streams raw UTF-8 lines from a request (e.g., Server-Sent Events).
+    /// Caller is responsible for higher-level parsing.
+    func streamLines(_ request: NetworkRequest) -> AsyncThrowingStream<String, Error>
 }
 
 final class NetworkManager: NetworkManaging {
@@ -72,6 +75,54 @@ final class NetworkManager: NetworkManaging {
             return try decoder.decode(T.self, from: data)
         } catch {
             throw AppError.decoding(error)
+        }
+    }
+
+    func streamLines(_ request: NetworkRequest) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            var urlRequest = URLRequest(url: request.url)
+            urlRequest.httpMethod = request.method.rawValue
+            urlRequest.httpBody = request.bodyData
+            for (key, value) in request.headers {
+                urlRequest.addValue(value, forHTTPHeaderField: key)
+            }
+            // Explicitly accept SSE if caller didn't set it
+            if urlRequest.value(forHTTPHeaderField: "Accept") == nil {
+                urlRequest.addValue("text/event-stream", forHTTPHeaderField: "Accept")
+            }
+
+            #if DEBUG
+            logger.log("➡️ STREAM \(request.method.rawValue, privacy: .public) \(request.url.absoluteString, privacy: .public)")
+            #endif
+
+            let task = Task {
+                do {
+                    let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
+                    guard let http = response as? HTTPURLResponse else {
+                        throw AppError.network(description: "Invalid response")
+                    }
+                    #if DEBUG
+                    self.logger.log("⬅️ STREAM status=\(http.statusCode, privacy: .public) for \(request.url.absoluteString, privacy: .public)")
+                    #endif
+                    guard (200...299).contains(http.statusCode) else {
+                        var collected = ""
+                        for try await line in bytes.lines {
+                            collected += line + "\n"
+                        }
+                        throw AppError.httpStatus(code: http.statusCode, body: collected)
+                    }
+                    for try await line in bytes.lines {
+                        continuation.yield(line)
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+
+            continuation.onTermination = { @Sendable _ in
+                task.cancel()
+            }
         }
     }
 }
