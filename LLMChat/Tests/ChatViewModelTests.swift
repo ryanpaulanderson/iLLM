@@ -36,6 +36,8 @@ final class ChatViewModelTests: XCTestCase {
         
         func sendMessage(_ message: String, history: [Message], model: LLMModel, parameters: ModelParameters) async throws -> String {
             sendMessageCallCount += 1
+            // Simulate network latency to allow observing isSending
+            try? await Task.sleep(nanoseconds: 30_000_000)
             lastSentMessage = message
             lastHistory = history
             lastModel = model
@@ -304,8 +306,8 @@ final class ChatViewModelTests: XCTestCase {
         fakeService.sendMessageResult = "First response"
         await viewModel.send(text: "First message")
         
-        // Reset call count to test the second message
-        fakeService.sendMessageCallCount = 0
+        // Reset call counts to test the second message
+        fakeService.resetCallCounts()
         fakeService.sendMessageResult = "Second response"
         
         // When: Send a second message
@@ -343,6 +345,9 @@ final class ChatViewModelTests: XCTestCase {
         
         // When
         let sendTask = Task { await viewModel.send(text: "Hello") }
+        
+        // Allow the async task to start on the main actor
+        try? await Task.sleep(nanoseconds: 10_000_000)
         
         // Check that isSending is true during the operation
         XCTAssertTrue(viewModel.isSending)
@@ -503,7 +508,7 @@ final class ChatViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.messages[1].content, "Initial response")
         
         // Reset service for regeneration test
-        fakeService.sendMessageCallCount = 0
+        fakeService.resetCallCounts()
         fakeService.sendMessageResult = "Better response"
         
         // When

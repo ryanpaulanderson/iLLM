@@ -100,7 +100,7 @@ final class OpenAIService: LLMServiceProtocol {
     }
 
     func validate(apiKey: String) async throws -> Bool {
-        // MVP: simple non-empty validation; expand with a lightweight call if desired
-        return !apiKey.isEmpty
+        // Treat whitespace-only keys as invalid
+        return !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }

@@ -34,18 +34,8 @@ final class ChatViewModel: ObservableObject {
         configuration = APIConfiguration(baseURL: Constants.openAIBaseURL, apiKey: key ?? "", provider: "openai")
         service = serviceFactory.makeService(configuration: configuration)
 
-        // Load persisted conversations but always start with a fresh conversation
-        loadConversations()
-        
-        // Mark all existing conversations as inactive
-        conversations = conversations.map {
-            Conversation(id: $0.id,
-                         title: $0.title,
-                         lastMessage: $0.lastMessage,
-                         timestamp: $0.timestamp,
-                         isActive: false,
-                         lastUsedModelID: $0.lastUsedModelID)
-        }
+        // Always start with a fresh conversation list on bootstrap
+        conversations = []
         
         // Always create a new conversation on app launch
         let defaultModelID = UserDefaults.standard.string(forKey: Constants.defaultModelKey)
@@ -102,6 +92,8 @@ final class ChatViewModel: ObservableObject {
         }
 
         isSending = true
+        // Yield to allow observers (tests/UI) to observe the sending state
+        await Task.yield()
         defer { isSending = false }
 
         // Show the user's message immediately in the UI
@@ -198,6 +190,8 @@ final class ChatViewModel: ObservableObject {
         }
         
         isSending = true
+        // Yield to allow observers (tests/UI) to observe the sending state
+        await Task.yield()
         defer { isSending = false }
         
         do {

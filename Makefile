@@ -144,6 +144,7 @@ build-for-testing: ensure-project
 		build-for-testing
 
 test: ensure-project
+	@rm -rf "$(RESULT_BUNDLE)"
 	@xcodebuild $(PROJ_SPEC) \
 		-scheme "$(SCHEME_S)" \
 		-configuration "$(CONFIG)" \
@@ -154,6 +155,7 @@ test: ensure-project
 		test
 
 test-without-building: ensure-project
+	@rm -rf "$(RESULT_BUNDLE)"
 	@xcodebuild $(PROJ_SPEC) \
 		-scheme "$(SCHEME_S)" \
 		-configuration "$(CONFIG)" \

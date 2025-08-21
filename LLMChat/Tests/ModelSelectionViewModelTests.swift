@@ -25,6 +25,8 @@ final class ModelSelectionViewModelTests: XCTestCase {
         
         func availableModels() async throws -> [LLMModel] {
             availableModelsCallCount += 1
+            // Simulate async delay so isLoading can be observed
+            try? await Task.sleep(nanoseconds: 30_000_000)
             if let error = availableModelsError {
                 throw error
             }
@@ -188,7 +190,8 @@ final class ModelSelectionViewModelTests: XCTestCase {
         
         let loadTask = Task { await viewModel.load() }
         
-        // Then: Should be loading during operation
+        // Then: Allow task to start and set isLoading
+        try? await Task.sleep(nanoseconds: 10_000_000)
         XCTAssertTrue(viewModel.isLoading)
         
         await loadTask.value
@@ -266,7 +269,7 @@ final class ModelSelectionViewModelTests: XCTestCase {
     
     // MARK: - Provider Tests
     
-    func test_init_withCustomProvider_usesCorrectProvider() {
+    func test_init_withCustomProvider_usesCorrectProvider() async {
         // Given
         let customProvider = "anthropic"
         
@@ -275,9 +278,7 @@ final class ModelSelectionViewModelTests: XCTestCase {
         
         // Then
         // Verify by loading and checking the configuration
-        Task {
-            await viewModel.load()
-            XCTAssertEqual(fakeFactory.lastConfiguration?.provider, customProvider)
-        }
+        await viewModel.load()
+        XCTAssertEqual(fakeFactory.lastConfiguration?.provider, customProvider)
     }
 }

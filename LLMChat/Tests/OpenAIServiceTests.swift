@@ -27,11 +27,16 @@ final class OpenAIServiceTests: XCTestCase {
                 throw error
             }
             
-            guard let result = requestResult as? T else {
-                throw AppError.decoding(DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Invalid result type")))
+            if let typed = requestResult as? T {
+                return typed
             }
-            
-            return result
+            if let encodable = requestResult as? Encodable {
+                let encoder = JSONEncoder()
+                let data = try encoder.encode(AnyEncodable(encodable))
+                let decoder = JSONDecoder()
+                return try decoder.decode(T.self, from: data)
+            }
+            throw AppError.decoding(DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Invalid result type")))
         }
     }
     
@@ -285,10 +290,17 @@ final class OpenAIServiceTests: XCTestCase {
 // MARK: - Test Response Models
 
 /// Helper struct to match the internal ModelsListResponse for testing
-private struct ModelsListResponse: Decodable {
+private struct ModelsListResponse: Codable {
     let data: [ModelItem]
 }
 
-private struct ModelItem: Decodable {
+private struct ModelItem: Codable {
     let id: String
+}
+
+// Type-erased Encodable wrapper to allow encoding existential Encodable values
+private struct AnyEncodable: Encodable {
+    private let _encode: (Encoder) throws -> Void
+    init(_ value: Encodable) { self._encode = value.encode }
+    func encode(to encoder: Encoder) throws { try _encode(encoder) }
 }

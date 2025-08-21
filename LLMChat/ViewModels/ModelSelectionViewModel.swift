@@ -29,6 +29,8 @@ final class ModelSelectionViewModel: ObservableObject {
     /// Loads available models for the configured provider.
     func load() async {
         isLoading = true
+        // Yield so observers/tests can see the loading state
+        await Task.yield()
         defer { isLoading = false }
         do {
             let config: APIConfiguration
