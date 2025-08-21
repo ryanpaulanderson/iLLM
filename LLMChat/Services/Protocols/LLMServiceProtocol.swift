@@ -8,8 +8,9 @@ protocol LLMServiceProtocol {
     ///   - message: The latest user message.
     ///   - history: Full conversation history ordered oldest to newest.
     ///   - model: Target model to use for completion.
+    ///   - parameters: Optional model parameters like temperature and top-p.
     /// - Returns: Assistant reply text.
-    func sendMessage(_ message: String, history: [Message], model: LLMModel) async throws -> String
+    func sendMessage(_ message: String, history: [Message], model: LLMModel, parameters: ModelParameters) async throws -> String
 
     /// Returns the list of available models for this provider.
     func availableModels() async throws -> [LLMModel]

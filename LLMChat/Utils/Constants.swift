@@ -24,4 +24,7 @@ enum Constants {
     
     // Model Selection
     static let defaultModelKey = "llmchat.defaultModel"
+    
+    // Model Parameters
+    static let modelParametersKey = "llmchat.modelParameters"
 }

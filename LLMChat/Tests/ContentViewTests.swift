@@ -21,7 +21,7 @@ final class ContentViewTests: XCTestCase {
         var availableModelsResult: [LLMModel] = []
         var validateResult: Bool = true
 
-        func sendMessage(_ message: String, history: [Message], model: LLMModel) async throws -> String {
+        func sendMessage(_ message: String, history: [Message], model: LLMModel, parameters: ModelParameters) async throws -> String {
             return "stub"
         }
 

@@ -10,6 +10,7 @@ final class ChatViewModel: ObservableObject {
     @Published var selectedModel: LLMModel?
     @Published var conversations: [Conversation] = []
     @Published var currentConversation: Conversation?
+    @Published private(set) var modelParameters: ModelParameters = .empty
     
     // Persistence keys
     private let conversationsKey = "llmchat.conversations"
@@ -61,6 +62,9 @@ final class ChatViewModel: ObservableObject {
         currentConversation = newConversation
         messages = [] // Start with empty messages
         saveConversations()
+        
+        // Load model parameters
+        loadModelParameters()
 
         Task {
             if selectedModel == nil {
@@ -108,7 +112,7 @@ final class ChatViewModel: ObservableObject {
         do {
             let svc = service ?? serviceFactory.makeService(configuration: configuration)
             // Send prior history (plus optional system message). The service will append the current user message.
-            let reply = try await svc.sendMessage(text, history: wireHistory, model: model)
+            let reply = try await svc.sendMessage(text, history: wireHistory, model: model, parameters: modelParameters)
             messages.append(Message(content: reply, role: .assistant))
 
             // Update the active conversation's preview and save the model used
@@ -162,6 +166,74 @@ final class ChatViewModel: ObservableObject {
     func clearConversation() {
         messages = []
         error = nil  // Also clear any existing error
+    }
+
+    /// Regenerates the last assistant response by removing it and re-sending the conversation.
+    func regenerateLastResponse() async {
+        guard let model = selectedModel else { return }
+        guard let conversation = currentConversation else { return }
+        guard !messages.isEmpty else { return }
+        
+        // Find the last assistant message
+        guard let lastMessage = messages.last, lastMessage.role == .assistant else { return }
+        
+        // Find the corresponding user message (the one before the assistant message)
+        guard messages.count >= 2 else { return }
+        let userMessageIndex = messages.count - 2
+        guard messages[userMessageIndex].role == .user else { return }
+        
+        let userMessage = messages[userMessageIndex]
+        
+        // Remove the last assistant message
+        messages.removeLast()
+        
+        // Build wire history up to the user message (excluding it since send() will add it)
+        let priorMessages = Array(messages.prefix(userMessageIndex))
+        var wireHistory = priorMessages
+        
+        // Add system prompt if this is the first exchange
+        if priorMessages.isEmpty {
+            let systemPrompt = promptStore.resolvePrompt(for: conversation.id)
+            wireHistory.insert(Message(content: systemPrompt, role: .system), at: 0)
+        }
+        
+        isSending = true
+        defer { isSending = false }
+        
+        do {
+            let svc = service ?? serviceFactory.makeService(configuration: configuration)
+            let reply = try await svc.sendMessage(userMessage.content, history: wireHistory, model: model, parameters: modelParameters)
+            messages.append(Message(content: reply, role: .assistant))
+
+            // Update the active conversation's preview
+            if let idx = conversations.firstIndex(where: { $0.id == conversation.id }) {
+                let c = conversations[idx]
+                conversations[idx] = Conversation(
+                    id: c.id,
+                    title: c.title,
+                    lastMessage: reply,
+                    timestamp: Date(),
+                    isActive: c.isActive,
+                    lastUsedModelID: model.id
+                )
+                saveConversations()
+            }
+
+            // Persist the updated messages
+            saveMessages(for: conversation)
+        } catch let appErr as AppError {
+            self.error = appErr
+        } catch {
+            self.error = AppError.unknown(error)
+        }
+    }
+
+    /// Returns true if the last message can be regenerated (i.e., it's from the assistant and there's a user message before it).
+    var canRegenerateLastMessage: Bool {
+        guard messages.count >= 2 else { return false }
+        guard let lastMessage = messages.last, lastMessage.role == .assistant else { return false }
+        guard messages[messages.count - 2].role == .user else { return false }
+        return true
     }
 
     /// Starts a brand new conversation and makes it active.
@@ -290,6 +362,43 @@ final class ChatViewModel: ObservableObject {
     /// - Parameter id: Conversation ID.
     func resetConversationPrompt(_ id: UUID) {
         promptStore.resetOverride(for: id)
+    }
+
+    // MARK: - Model Parameters Management
+
+    /// Returns the current model parameters.
+    func currentModelParameters() -> ModelParameters {
+        modelParameters
+    }
+
+    /// Updates the model parameters and saves them.
+    /// - Parameter parameters: New parameters to apply.
+    func updateModelParameters(_ parameters: ModelParameters) {
+        modelParameters = parameters
+        saveModelParameters()
+    }
+
+    /// Resets model parameters to empty (uses provider defaults).
+    func resetModelParameters() {
+        modelParameters = .empty
+        saveModelParameters()
+    }
+
+    /// Loads model parameters from UserDefaults.
+    private func loadModelParameters() {
+        if let data = UserDefaults.standard.data(forKey: Constants.modelParametersKey),
+           let decoded = try? JSONDecoder().decode(ModelParameters.self, from: data) {
+            modelParameters = decoded
+        } else {
+            modelParameters = .empty
+        }
+    }
+
+    /// Saves model parameters to UserDefaults.
+    private func saveModelParameters() {
+        if let encoded = try? JSONEncoder().encode(modelParameters) {
+            UserDefaults.standard.set(encoded, forKey: Constants.modelParametersKey)
+        }
     }
 
     // MARK: - Default Model Management

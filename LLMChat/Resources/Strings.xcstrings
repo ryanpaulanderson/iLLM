@@ -309,6 +309,18 @@
         "en": { "stringUnit": { "state": "translated", "value": "Edit conversation prompt" } }
       }
     },
+    "message.regenerate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Regenerate" } }
+      }
+    },
+    "accessibility.regenerateMessage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Regenerate response" } }
+      }
+    },
     "conversations.delete": {
       "extractionState": "manual",
       "localizations": {
@@ -325,6 +337,66 @@
       "extractionState": "manual",
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "Are you sure you want to delete this conversation? This action cannot be undone." } }
+      }
+    },
+    "modelParams.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Model Parameters" } }
+      }
+    },
+    "modelParams.useCustom": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Use Custom Parameters" } }
+      }
+    },
+    "modelParams.useCustom.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Override model defaults with custom settings" } }
+      }
+    },
+    "modelParams.temperature": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Temperature" } }
+      }
+    },
+    "modelParams.temperature.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Controls randomness: 0.0 = deterministic, 1.0 = creative" } }
+      }
+    },
+    "modelParams.topP": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Top-P" } }
+      }
+    },
+    "modelParams.topP.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Controls word choice diversity: lower = more focused" } }
+      }
+    },
+    "modelParams.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Cancel" } }
+      }
+    },
+    "modelParams.reset": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Reset" } }
+      }
+    },
+    "modelParams.save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Save" } }
       }
     }
   }

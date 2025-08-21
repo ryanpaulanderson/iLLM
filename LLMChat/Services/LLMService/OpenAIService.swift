@@ -17,6 +17,15 @@ final class OpenAIService: LLMServiceProtocol {
     struct ChatRequest: Encodable {
         let model: String
         let messages: [ChatMessage]
+        let temperature: Double?
+        let top_p: Double?
+        
+        init(model: String, messages: [ChatMessage], parameters: ModelParameters = .empty) {
+            self.model = model
+            self.messages = messages
+            self.temperature = parameters.temperature
+            self.top_p = parameters.topP
+        }
     }
 
     struct ChatMessage: Encodable {
@@ -37,12 +46,12 @@ final class OpenAIService: LLMServiceProtocol {
 
     // MARK: - LLMServiceProtocol
 
-    func sendMessage(_ message: String, history: [Message], model: LLMModel) async throws -> String {
+    func sendMessage(_ message: String, history: [Message], model: LLMModel, parameters: ModelParameters) async throws -> String {
         let url = configuration.baseURL.appendingPathComponent("chat/completions")
         let msgs: [ChatMessage] =
             history.map { ChatMessage(role: $0.role.rawValue, content: $0.content) }
             + [ChatMessage(role: "user", content: message)]
-        let body = ChatRequest(model: model.id, messages: msgs)
+        let body = ChatRequest(model: model.id, messages: msgs, parameters: parameters)
 
         let request = try NetworkRequest(
             url: url,

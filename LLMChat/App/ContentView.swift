@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var showModelSelection = false
     @State private var showSystemPromptEditor = false
     @State private var showConversationsList = false
+    @State private var showModelParametersEditor = false
 
     var body: some View {
         Group {
@@ -72,6 +73,11 @@ struct ContentView: View {
                                 } label: {
                                     Label(String(localized: "systemPrompt.editor.title", table: "Strings"), systemImage: "text.alignleft")
                                 }
+                                Button {
+                                    showModelParametersEditor = true
+                                } label: {
+                                    Label(String(localized: "modelParams.title", table: "Strings"), systemImage: "slider.horizontal.below.rectangle")
+                                }
                             } label: {
                                 Image(systemName: "gear")
                             }
@@ -102,6 +108,12 @@ struct ContentView: View {
                 .sheet(isPresented: $showSystemPromptEditor) {
                     NavigationStack {
                         SystemPromptEditorView()
+                            .environmentObject(chatVM)
+                    }
+                }
+                .sheet(isPresented: $showModelParametersEditor) {
+                    NavigationStack {
+                        ModelParametersEditorView()
                             .environmentObject(chatVM)
                     }
                 }

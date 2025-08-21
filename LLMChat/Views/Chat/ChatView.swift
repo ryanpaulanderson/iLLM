@@ -9,14 +9,28 @@ struct ChatView: View {
         ScrollViewReader { proxy in
             VStack(spacing: 0) {
                 List {
-                    ForEach(vm.messages) { message in
-                        MessageBubbleView(message: message)
-                            .listRowInsets(EdgeInsets())
-                            .listRowSeparator(.hidden)
+                    ForEach(Array(vm.messages.enumerated()), id: \.element.id) { index, message in
+                        let isLastMessage = index == vm.messages.count - 1
+                        let canRegenerate = vm.canRegenerateLastMessage && isLastMessage && message.role == .assistant
+                        
+                        MessageBubbleView(
+                            message: message,
+                            isLastMessage: isLastMessage,
+                            canRegenerate: canRegenerate,
+                            onRegenerate: {
+                                Task {
+                                    await vm.regenerateLastResponse()
+                                }
+                            }
+                        )
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
                     }
                     if vm.isSending {
                         HStack {
                             ProgressView()
+                                .scaleEffect(0.8)
+                                .progressViewStyle(CircularProgressViewStyle(tint: .accentColor))
                             Text(String(localized: "chat.thinking", table: "Strings"))
                                 .foregroundStyle(.secondary)
                         }

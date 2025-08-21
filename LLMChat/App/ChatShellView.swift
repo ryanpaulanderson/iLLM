@@ -20,6 +20,7 @@ struct ChatShellView: View {
     @State private var hasInitializedSelection = false
     @State private var showConversationPromptEditor = false
     @State private var showSystemPromptEditor = false
+    @State private var showModelParametersEditor = false
     
     var body: some View {
         NavigationSplitView(
@@ -137,6 +138,11 @@ extension ChatShellView {
                         } label: {
                             Label(String(localized: "systemPrompt.editor.title", table: "Strings"), systemImage: "text.alignleft")
                         }
+                        Button {
+                            showModelParametersEditor = true
+                        } label: {
+                            Label(String(localized: "modelParams.title", table: "Strings"), systemImage: "slider.horizontal.below.rectangle")
+                        }
                     } label: {
                         Image(systemName: "gear")
                             .accessibilityLabel(String(localized: "accessibility.openSettings", table: "Strings"))
@@ -167,6 +173,12 @@ extension ChatShellView {
             .sheet(isPresented: $showSystemPromptEditor) {
                 NavigationStack {
                     SystemPromptEditorView()
+                        .environmentObject(chatVM)
+                }
+            }
+            .sheet(isPresented: $showModelParametersEditor) {
+                NavigationStack {
+                    ModelParametersEditorView()
                         .environmentObject(chatVM)
                 }
             }
