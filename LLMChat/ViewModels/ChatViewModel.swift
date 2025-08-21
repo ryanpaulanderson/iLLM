@@ -17,12 +17,14 @@ final class ChatViewModel: ObservableObject {
 
     private let serviceFactory: LLMServiceFactoryType
     private let keychain: KeychainServiceType
+    private var promptStore: SystemPromptStoring
     private var configuration = APIConfiguration()
     private var service: LLMServiceProtocol?
 
-    init(serviceFactory: LLMServiceFactoryType, keychain: KeychainServiceType) {
+    init(serviceFactory: LLMServiceFactoryType, keychain: KeychainServiceType, promptStore: SystemPromptStoring = SystemPromptStore()) {
         self.serviceFactory = serviceFactory
         self.keychain = keychain
+        self.promptStore = promptStore
     }
 
     /// Bootstraps the view model by loading persisted API configuration and seeding defaults.
@@ -31,34 +33,50 @@ final class ChatViewModel: ObservableObject {
         configuration = APIConfiguration(baseURL: Constants.openAIBaseURL, apiKey: key ?? "", provider: "openai")
         service = serviceFactory.makeService(configuration: configuration)
 
-        // Load persisted conversations
+        // Load persisted conversations but always start with a fresh conversation
         loadConversations()
         
-        // Seed an initial conversation if none exists
-        if conversations.isEmpty {
-            let newConversation = Conversation(
-                title: "New Chat",
-                lastMessage: nil,
-                timestamp: Date(),
-                isActive: true
-            )
-            conversations = [newConversation]
-            currentConversation = newConversation
-            saveConversations()
-        } else {
-            // Select the first active conversation or the first one
-            currentConversation = conversations.first { $0.isActive } ?? conversations.first
-            // Load messages for the current conversation
-            if let currentConversation = currentConversation {
-                loadMessages(for: currentConversation)
-            }
+        // Mark all existing conversations as inactive
+        conversations = conversations.map {
+            Conversation(id: $0.id,
+                         title: $0.title,
+                         lastMessage: $0.lastMessage,
+                         timestamp: $0.timestamp,
+                         isActive: false,
+                         lastUsedModelID: $0.lastUsedModelID)
         }
+        
+        // Always create a new conversation on app launch
+        let defaultModelID = UserDefaults.standard.string(forKey: Constants.defaultModelKey)
+        let newConversation = Conversation(
+            title: "New Chat",
+            lastMessage: nil,
+            timestamp: Date(),
+            isActive: true,
+            lastUsedModelID: defaultModelID
+        )
+        
+        // Add the new conversation to the top of the list
+        conversations.insert(newConversation, at: 0)
+        currentConversation = newConversation
+        messages = [] // Start with empty messages
+        saveConversations()
 
         Task {
             if selectedModel == nil {
                 let svc = service ?? serviceFactory.makeService(configuration: configuration)
                 if let models = try? await svc.availableModels() {
-                    selectedModel = models.first
+                    // Restore the model for the new conversation (which should be the default model)
+                    if let currentConversation = currentConversation, let modelID = currentConversation.lastUsedModelID {
+                        await restoreModelForConversation(modelID: modelID)
+                    } else {
+                        // Fallback: Try to load saved default model first
+                        if let savedModel = loadDefaultModel(from: models) {
+                            selectedModel = savedModel
+                        } else {
+                            selectedModel = models.first
+                        }
+                    }
                 }
             }
         }
@@ -69,20 +87,31 @@ final class ChatViewModel: ObservableObject {
     func send(text: String) async {
         guard let model = selectedModel else { return }
         guard let conversation = currentConversation else { return }
-        
+
+        // Build wire history BEFORE appending the new user message to the UI transcript.
+        let prior = messages
+        var wireHistory = prior
+        if prior.isEmpty {
+            // Seed a system prompt only for a brand-new conversation
+            let systemPrompt = promptStore.resolvePrompt(for: conversation.id)
+            wireHistory.insert(Message(content: systemPrompt, role: .system), at: 0)
+        }
+
         isSending = true
         defer { isSending = false }
+
+        // Show the user's message immediately in the UI
         messages.append(Message(content: text, role: .user))
-        
-        // Save messages after adding user message
+        // Persist after appending the user message
         saveMessages(for: conversation)
-        
+
         do {
             let svc = service ?? serviceFactory.makeService(configuration: configuration)
-            let reply = try await svc.sendMessage(text, history: messages, model: model)
+            // Send prior history (plus optional system message). The service will append the current user message.
+            let reply = try await svc.sendMessage(text, history: wireHistory, model: model)
             messages.append(Message(content: reply, role: .assistant))
 
-            // Update the active conversation's preview
+            // Update the active conversation's preview and save the model used
             if let idx = conversations.firstIndex(where: { $0.id == conversation.id }) {
                 let c = conversations[idx]
                 conversations[idx] = Conversation(
@@ -90,12 +119,13 @@ final class ChatViewModel: ObservableObject {
                     title: c.title,
                     lastMessage: reply,
                     timestamp: Date(),
-                    isActive: c.isActive
+                    isActive: c.isActive,
+                    lastUsedModelID: model.id
                 )
                 saveConversations()
             }
-            
-            // Save messages after adding assistant message
+
+            // Persist after appending the assistant message
             saveMessages(for: conversation)
         } catch let appErr as AppError {
             self.error = appErr
@@ -144,18 +174,29 @@ final class ChatViewModel: ObservableObject {
                          title: $0.title,
                          lastMessage: $0.lastMessage,
                          timestamp: $0.timestamp,
-                         isActive: false)
+                         isActive: false,
+                         lastUsedModelID: $0.lastUsedModelID)
         }
+        let defaultModelID = UserDefaults.standard.string(forKey: Constants.defaultModelKey)
         let newConversation = Conversation(
             title: "New Chat",
             lastMessage: nil,
             timestamp: Date(),
-            isActive: true
+            isActive: true,
+            lastUsedModelID: defaultModelID
         )
         // Put newest at the top
         conversations.insert(newConversation, at: 0)
         currentConversation = newConversation
         saveConversations()
+        
+        // Restore the model for the new conversation
+        if let modelID = defaultModelID {
+            Task {
+                await restoreModelForConversation(modelID: modelID)
+            }
+        }
+        
         return newConversation
     }
     
@@ -168,10 +209,19 @@ final class ChatViewModel: ObservableObject {
                          title: $0.title,
                          lastMessage: $0.lastMessage,
                          timestamp: $0.timestamp,
-                         isActive: $0.id == conversation.id)
+                         isActive: $0.id == conversation.id,
+                         lastUsedModelID: $0.lastUsedModelID)
         }
         currentConversation = conversation
         loadMessages(for: conversation)
+        
+        // Restore the model that was last used with this conversation
+        if let modelID = conversation.lastUsedModelID {
+            Task {
+                await restoreModelForConversation(modelID: modelID)
+            }
+        }
+        
         saveConversations()
     }
     
@@ -188,6 +238,9 @@ final class ChatViewModel: ObservableObject {
         if let encoded = try? JSONEncoder().encode(conversations) {
             UserDefaults.standard.set(encoded, forKey: conversationsKey)
         }
+        // Prune any overrides for conversations that no longer exist
+        let ids = Set(conversations.map { $0.id })
+        promptStore.removeStaleOverrides(validIDs: ids)
     }
     
     private func loadMessages(for conversation: Conversation) {
@@ -205,6 +258,141 @@ final class ChatViewModel: ObservableObject {
         if let encoded = try? JSONEncoder().encode(messages) {
             UserDefaults.standard.set(encoded, forKey: key)
         }
+    }
+
+    // MARK: - System Prompt Management
+
+    /// Returns the current global system prompt (with default fallback).
+    func currentGlobalSystemPrompt() -> String {
+        promptStore.defaultPrompt
+    }
+
+    /// Updates the global system prompt (empty/whitespace reverts to default).
+    func updateGlobalSystemPrompt(_ prompt: String) {
+        promptStore.defaultPrompt = prompt
+    }
+
+    /// Returns the per-conversation override, if any (nil means use global).
+    /// - Parameter id: Conversation ID.
+    func conversationPromptOverride(for id: UUID) -> String? {
+        promptStore.override(for: id)
+    }
+
+    /// Sets or clears a per-conversation prompt override.
+    /// - Parameters:
+    ///   - id: Conversation ID.
+    ///   - prompt: New prompt; empty/whitespace clears the override.
+    func updateConversationPrompt(_ id: UUID, to prompt: String) {
+        promptStore.setOverride(prompt, for: id)
+    }
+
+    /// Resets/removes a per-conversation prompt override.
+    /// - Parameter id: Conversation ID.
+    func resetConversationPrompt(_ id: UUID) {
+        promptStore.resetOverride(for: id)
+    }
+
+    // MARK: - Default Model Management
+
+    /// Sets a model as the default and saves it to UserDefaults.
+    /// - Parameter model: The model to set as default.
+    func setDefaultModel(_ model: LLMModel) {
+        selectedModel = model
+        saveDefaultModel(model)
+    }
+
+    /// Returns the currently saved default model ID, if any.
+    func savedDefaultModelID() -> String? {
+        UserDefaults.standard.string(forKey: Constants.defaultModelKey)
+    }
+
+    /// Saves the default model to UserDefaults.
+    private func saveDefaultModel(_ model: LLMModel) {
+        UserDefaults.standard.set(model.id, forKey: Constants.defaultModelKey)
+    }
+
+    /// Loads the saved default model from the available models list.
+    /// - Parameter models: Available models to search in.
+    /// - Returns: The matching model if found and valid.
+    private func loadDefaultModel(from models: [LLMModel]) -> LLMModel? {
+        guard let savedID = UserDefaults.standard.string(forKey: Constants.defaultModelKey) else {
+            return nil
+        }
+        return models.first { $0.id == savedID }
+    }
+
+    /// Restores the model for a conversation, falling back to default if model not found.
+    /// - Parameter modelID: The model ID to restore.
+    private func restoreModelForConversation(modelID: String) async {
+        let svc = service ?? serviceFactory.makeService(configuration: configuration)
+        guard let models = try? await svc.availableModels() else { return }
+        
+        // Try to find the exact model
+        if let model = models.first(where: { $0.id == modelID }) {
+            selectedModel = model
+            return
+        }
+        
+        // Fallback to saved default model
+        if let defaultModel = loadDefaultModel(from: models) {
+            selectedModel = defaultModel
+            return
+        }
+        
+        // Ultimate fallback to first available model
+        selectedModel = models.first
+    }
+
+    // MARK: - Conversation Management
+
+    /// Deletes a conversation and its associated messages.
+    /// - Parameter conversation: The conversation to delete.
+    /// - Returns: True if deletion was successful, false otherwise.
+    @discardableResult
+    func deleteConversation(_ conversation: Conversation) -> Bool {
+        guard let index = conversations.firstIndex(where: { $0.id == conversation.id }) else {
+            return false
+        }
+
+        // Delete the conversation's messages from storage
+        let messageKey = messagesKeyPrefix + conversation.id.uuidString
+        UserDefaults.standard.removeObject(forKey: messageKey)
+
+        // Remove from conversations array
+        conversations.remove(at: index)
+
+        // If we deleted the currently active conversation, handle appropriately
+        if currentConversation?.id == conversation.id {
+            if conversations.isEmpty {
+                // Create a new conversation if this was the last one
+                let defaultModelID = UserDefaults.standard.string(forKey: Constants.defaultModelKey)
+                let newConversation = Conversation(
+                    title: "New Chat",
+                    lastMessage: nil,
+                    timestamp: Date(),
+                    isActive: true,
+                    lastUsedModelID: defaultModelID
+                )
+                conversations = [newConversation]
+                currentConversation = newConversation
+                messages = []
+                
+                // Restore the model for the new conversation
+                if let modelID = defaultModelID {
+                    Task {
+                        await restoreModelForConversation(modelID: modelID)
+                    }
+                }
+            } else {
+                // Select the first available conversation
+                let firstConversation = conversations[0]
+                selectConversation(firstConversation)
+            }
+        }
+
+        // Save updated conversations
+        saveConversations()
+        return true
     }
 }
 

@@ -17,7 +17,7 @@ struct ChatView: View {
                     if vm.isSending {
                         HStack {
                             ProgressView()
-                            Text(String(localized: "chat.thinking"))
+                            Text(String(localized: "chat.thinking", table: "Strings"))
                                 .foregroundStyle(.secondary)
                         }
                         .padding()
@@ -31,6 +31,8 @@ struct ChatView: View {
                         .id("BOTTOM")
                 }
                 .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(Color(.systemBackground))
                 .onChange(of: vm.messages.count, initial: false) { _, _ in
                     scrollToBottom(proxy)
                 }
@@ -51,12 +53,14 @@ struct ChatView: View {
                 })
                 .padding(.horizontal)
                 .padding(.bottom)
+                .background(Color(.systemBackground))
             }
+            .background(Color(.systemBackground))
         }
         .alert(item: $vm.error) { err in
-            Alert(title: Text(String(localized: "alert.error.title")),
+            Alert(title: Text(String(localized: "alert.error.title", table: "Strings")),
                   message: Text(err.localizedDescription),
-                  dismissButton: .default(Text(String(localized: "alert.ok"))))
+                  dismissButton: .default(Text(String(localized: "alert.ok", table: "Strings"))))
         }
     }
 

@@ -62,7 +62,23 @@ struct ModelSelectionView: View {
     private func modelRow(for model: LLMModel) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(model.name)
+                HStack {
+                    Text(model.name)
+                    
+                    // Show "Default" badge for the saved default model
+                    if model.id == chatVM.savedDefaultModelID() {
+                        Text(String(localized: "models.default", table: "Strings"))
+                            .font(.caption2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.accentColor.opacity(0.2))
+                            .foregroundColor(.accentColor)
+                            .clipShape(Capsule())
+                    }
+                    
+                    Spacer()
+                }
+                
                 Text(model.id)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -79,6 +95,13 @@ struct ModelSelectionView: View {
         .onTapGesture {
             chatVM.selectedModel = model
             dismiss() // Auto-dismiss after selecting a model
+        }
+        .contextMenu {
+            Button {
+                chatVM.setDefaultModel(model)
+            } label: {
+                Label(String(localized: "models.setDefault", table: "Strings"), systemImage: "star.fill")
+            }
         }
     }
     

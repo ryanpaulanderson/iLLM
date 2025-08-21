@@ -88,7 +88,7 @@ final class ContentViewTests: XCTestCase {
         let fakeService = FakeService()
         let factory = FakeServiceFactory(service: fakeService)
         let keychain = FakeKeychain(initial: ["openai": "TEST_KEY"])
-        let chatVM = ChatViewModel(serviceFactory: factory, keychain: keychain)
+        let chatVM = ChatViewModel(serviceFactory: factory, keychain: keychain, promptStore: SystemPromptStore())
 
         // When: Present ContentView so onAppear triggers bootstrap()
         let sut = ContentView().environmentObject(chatVM)
@@ -109,7 +109,7 @@ final class ContentViewTests: XCTestCase {
         ]
         let factory = FakeServiceFactory(service: fakeService)
         let keychain = FakeKeychain(initial: ["openai": "KEY"])
-        let chatVM = ChatViewModel(serviceFactory: factory, keychain: keychain)
+        let chatVM = ChatViewModel(serviceFactory: factory, keychain: keychain, promptStore: SystemPromptStore())
 
         // When
         let sut = ContentView().environmentObject(chatVM)

@@ -18,8 +18,8 @@ struct MessageBubbleView: View {
                 .accessibilityLabel(
                     Text(
                         message.isFromUser
-                        ? String(format: String(localized: "accessibility.message.user_format"), message.content)
-                        : String(format: String(localized: "accessibility.message.assistant_format"), message.content)
+                        ? String(format: String(localized: "accessibility.message.user_format", table: "Strings"), message.content)
+                        : String(format: String(localized: "accessibility.message.assistant_format", table: "Strings"), message.content)
                     )
                 )
             if !message.isFromUser { Spacer() }

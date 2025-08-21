@@ -15,6 +15,7 @@ struct Conversation: Identifiable, Codable {
     let lastMessage: String?
     let timestamp: Date
     let isActive: Bool
+    let lastUsedModelID: String?
     
     /// Creates a new conversation instance
     /// - Parameters:
@@ -23,11 +24,13 @@ struct Conversation: Identifiable, Codable {
     ///   - lastMessage: The most recent message in the conversation
     ///   - timestamp: When the conversation was last updated
     ///   - isActive: Whether this is the currently active conversation
-    init(id: UUID = UUID(), title: String, lastMessage: String? = nil, timestamp: Date = Date(), isActive: Bool = false) {
+    ///   - lastUsedModelID: The ID of the model last used in this conversation
+    init(id: UUID = UUID(), title: String, lastMessage: String? = nil, timestamp: Date = Date(), isActive: Bool = false, lastUsedModelID: String? = nil) {
         self.id = id
         self.title = title
         self.lastMessage = lastMessage
         self.timestamp = timestamp
         self.isActive = isActive
+        self.lastUsedModelID = lastUsedModelID
     }
 }

@@ -23,6 +23,19 @@ struct SettingsView: View {
                         }
                     }
                 }
+
+                // System Prompt Section
+                Section(String(localized: "systemPrompt.section.title")) {
+                    NavigationLink {
+                        SystemPromptEditorView()
+                    } label: {
+                        HStack {
+                            Text(String(localized: "systemPrompt.editor.title"))
+                                .foregroundStyle(.primary)
+                            Spacer()
+                        }
+                    }
+                }
                 
                 // API Configuration Section
                 Section(String(localized: "settings.section.openai")) {

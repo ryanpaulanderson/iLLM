@@ -16,4 +16,12 @@ enum Constants {
 
     /// String representation of the OpenAI API base URL for contexts that require String.
     static let openAIBaseURLString = "https://api.openai.com/v1/"
+    
+    // System Prompt defaults and keys
+    static let systemPromptGlobalKey = "llmchat.systemPrompt.global"
+    static let systemPromptOverridesKey = "llmchat.systemPrompt.overrides"
+    static let defaultSystemPrompt = "You are Roo, a helpful, concise iOS development assistant who follows the app's style guide."
+    
+    // Model Selection
+    static let defaultModelKey = "llmchat.defaultModel"
 }

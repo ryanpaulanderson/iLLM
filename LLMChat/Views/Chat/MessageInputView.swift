@@ -7,12 +7,12 @@ struct MessageInputView: View {
 
     var body: some View {
         HStack {
-            TextField(String(localized: "message.input.placeholder"), text: $text, axis: .vertical)
+            TextField(String(localized: "message.input.placeholder", table: "Strings"), text: $text, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
-                .accessibilityLabel(String(localized: "accessibility.messageInput"))
+                .accessibilityLabel(String(localized: "accessibility.messageInput", table: "Strings"))
             Button(action: onSend) {
                 Image(systemName: "paperplane.fill")
-                    .accessibilityLabel(String(localized: "accessibility.sendMessage"))
+                    .accessibilityLabel(String(localized: "accessibility.sendMessage", table: "Strings"))
             }
             .buttonStyle(.borderedProminent)
             .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

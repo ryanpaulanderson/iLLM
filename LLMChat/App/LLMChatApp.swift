@@ -13,6 +13,15 @@ struct LLMChatApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(
+                    ChatViewModel(
+                        serviceFactory: LLMServiceFactory(),
+                        keychain: KeychainService(),
+                        promptStore: SystemPromptStore()
+                    )
+                )
+                .background(Color(.systemBackground))
+                .ignoresSafeArea()
         }
     }
 }
